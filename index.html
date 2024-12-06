@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>影视资源整理工具</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 顶部区域 -->
+    <header class="header">
+        <h1>影视资源整理工具</h1>
+        <p class="subtitle">快速整理和管理您的影视资源链接</p>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <div class="container">
+        <!-- 左侧链接管理 -->
+        <div class="link-management">
+            <div class="section-header">
+                <h2>链接管理</h2>
+                <div class="header-actions">
+                    <button id="exportLinks" class="icon-btn" title="导出链接">
+                        📤
+                    </button>
+                    <button id="importLinks" class="icon-btn" title="导入链接">
+                        📥
+                    </button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
+            <div class="search-box">
+                <input type="text" id="searchLinks" placeholder="搜索已保存链接..." class="input-field">
+            </div>
+            <div class="input-group">
+                <input type="text" id="movieTitle" placeholder="输入电影名称" class="input-field">
+                <input type="text" id="movieLink" placeholder="输入链接地址" class="input-field">
+                <button id="addLink" class="btn primary">添加链接</button>
+            </div>
+            <div class="saved-links" id="savedLinks"></div>
+            <div class="pagination" id="linksPagination">
+                <button class="page-btn" id="linksPrevPage">上一页</button>
+                <span class="page-info" id="linksPageInfo">1/1</span>
+                <button class="page-btn" id="linksNextPage">下一页</button>
+            </div>
+        </div>
+
+        <!-- 中间内容区 -->
+        <div class="content-area">
+            <textarea id="contentInput" class="main-textarea" placeholder="在此输入需要整理的文章内容..."></textarea>
+            <div class="button-group">
+                <button id="formatBtn" class="btn primary">整理内容</button>
+                <button id="copyBtn" class="btn primary">复制内容</button>
+                <button id="clearBtn" class="btn danger">清空输入</button>
+            </div>
+            <div id="outputText" class="formatted-content"></div>
+        </div>
+
+        <!-- 右侧历史记录 -->
+        <div class="history-section">
+            <div class="section-header">
+                <h2>历史记录</h2>
+                <div class="header-actions">
+                    <button id="exportHistory" class="icon-btn" title="导出历史记录">
+                        📤
+                    </button>
+                </div>
+            </div>
+            <input type="text" id="searchHistory" placeholder="搜索历史记录..." class="input-field">
+            <div class="history-list" id="historyList"></div>
+            <div class="pagination" id="historyPagination">
+                <button class="page-btn" id="historyPrevPage">上一页</button>
+                <span class="page-info" id="historyPageInfo">1/1</span>
+                <button class="page-btn" id="historyNextPage">下一页</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/main.js"></script>
+    <!-- 在body末尾添加确认弹窗 -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3>确认删除</h3>
+            <p>确定要删除这个链接吗？</p>
+            <div class="modal-buttons">
+                <button id="confirmDelete" class="btn primary">确认</button>
+                <button id="cancelDelete" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

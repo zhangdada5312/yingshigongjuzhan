@@ -1,0 +1,428 @@
+/* 全局样式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* 顶部区域样式 */
+.header {
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 1em;
+    opacity: 0.9;
+}
+
+/* 主容器样式 */
+.container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 300px 1fr 300px;
+    gap: 20px;
+}
+
+/* 卡片通用样式 */
+.link-management,
+.content-area,
+.history-section {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    height: fit-content;
+}
+
+/* 标题样式 */
+h2 {
+    font-size: 1.2em;
+    margin-bottom: 16px;
+    color: #2c3e50;
+}
+
+/* 输入框样式 */
+.input-field {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #4e54c8;
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 12px 40px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    min-width: 120px;
+    transition: all 0.2s ease;
+}
+
+.btn.primary {
+    background: #4355f3;
+    color: white;
+}
+
+.btn.primary:hover {
+    background: #3445d0;
+    transform: translateY(-1px);
+}
+
+.btn.danger {
+    background: #ff4d4f;
+    color: white;
+}
+
+.btn.danger:hover {
+    background: #ff3333;
+    transform: translateY(-1px);
+}
+
+/* 主文本区域 */
+.main-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.8;
+    resize: vertical;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #2c3e50;
+}
+
+/* 按钮组 */
+.button-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+/* 历史记录样式 */
+.history-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.history-item {
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #2c3e50;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+}
+
+.link {
+    display: block;
+    color: #5c7080;
+    font-size: 14px;
+    margin-bottom: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.time {
+    display: block;
+    color: #8492a6;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.delete-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    background: #ff4d4f;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    background: #ff7875;
+    transform: translateY(-1px);
+}
+
+/* 链接管理样式 */
+.input-group {
+    margin-bottom: 16px;
+}
+
+.saved-links {
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .link-management,
+    .history-section {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .button-group {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
+
+/* 格式化内容区域样式 */
+.formatted-content {
+    margin-top: 20px;
+    padding: 20px;
+    white-space: pre-wrap;
+    line-height: 1.8;
+    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #2c3e50;
+}
+
+/* 分页控件样式 */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.page-btn {
+    padding: 6px 12px;
+    border: 1px solid #4e54c8;
+    border-radius: 4px;
+    background: white;
+    color: #4e54c8;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover {
+    background: #4e54c8;
+    color: white;
+}
+
+.page-btn:disabled {
+    border-color: #ccc;
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 14px;
+    color: #666;
+}
+
+/* 调整列表容器高度 */
+.saved-links {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 删除按钮样式 */
+.delete-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    background: #ff4d4f;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.history-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    background: #ff7875;
+}
+
+/* 确认弹窗样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show {
+    display: flex !important;
+}
+
+.modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* 添加Font Awesome图标库 */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+
+/* 标题区域样式 */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 图标按钮样式 */
+.icon-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.icon-btn:hover {
+    background-color: rgba(78, 84, 200, 0.1);
+    transform: translateY(-1px);
+}
+
+/* 移除之前的tool-bar样式 */
+.tool-bar {
+    display: none;
+}
+
+/* 搜索框样式 */
+.search-box {
+    margin-bottom: 15px;
+}
+
+.search-box .input-field {
+    width: 100%;
+}
+
+/* 移除边框，保持简洁的列表样式 */
+.history-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.saved-links, .history-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+/* 移除之前的边框相关样式 */
+.saved-links, .history-list {
+    border: none;
+    border-radius: 0;
+} 
