@@ -13,6 +13,7 @@ let searchLinks;
 let exportLinks;
 let importLinks;
 let fileInput;
+let clearAllLinks;
 
 // 分页元素
 let historyPrevPage;
@@ -67,6 +68,7 @@ function initializeDOMElements() {
     exportLinks = document.getElementById('exportLinks');
     importLinks = document.getElementById('importLinks');
     fileInput = document.getElementById('fileInput');
+    clearAllLinks = document.getElementById('clearAllLinks');
 
     historyPrevPage = document.getElementById('historyPrevPage');
     historyNextPage = document.getElementById('historyNextPage');
@@ -136,9 +138,16 @@ function initializeStyles() {
 }
 
 // 显示确认对话框
-function showConfirmModal(callback) {
+function showConfirmModal(callback, title = '确认删除', message = '确定要删除这个链接吗？') {
     console.log('显示确认对话框');
     deleteItemCallback = callback;
+    
+    // 更新对话框内容
+    const modalTitle = confirmModal.querySelector('h3');
+    const modalMessage = confirmModal.querySelector('p');
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalMessage) modalMessage.textContent = message;
+    
     confirmModal.style.display = 'flex';
     
     // 添加点击外部关闭功能
@@ -304,7 +313,7 @@ ${content}
 提示：复制上方网盘链接到浏览器搜索打开即可保存观看
 资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
 
-        // 显示格式化��的内容
+        // 显示格式化后的内容
         document.getElementById('outputText').textContent = formattedContent;
         
         // 保存到历史记录
@@ -447,7 +456,7 @@ ${content}
 
                     // 验证数据格式
                     if (!jsonData[0].hasOwnProperty('电影名称') || !jsonData[0].hasOwnProperty('链接地址')) {
-                        throw new Error('Excel文件格式不正确，请确保包含"电影名称"和"链接地址"列');
+                        throw new Error('Excel文件格式不正确，请确保���含"电影名称"和"链接地址"列');
                     }
 
                     // 获取现有链接
@@ -492,6 +501,23 @@ ${content}
             console.error('导入失败:', error);
             alert('导入功能初始化失败，请刷新页面后再试');
         }
+    });
+
+    // 删除所有链接按钮事件
+    clearAllLinks.addEventListener('click', () => {
+        console.log('点击删除所有链接按钮');
+        const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+        if (links.length === 0) {
+            alert('没有可删除的链接');
+            return;
+        }
+
+        showConfirmModal(() => {
+            console.log('确认删除所有链接');
+            localStorage.setItem(LINKS_KEY, '[]');
+            loadSavedLinks();
+            alert('已删除所有链接');
+        }, '确认删除', '确定要删除所有链接吗？此操作不可恢复');
     });
 }
 

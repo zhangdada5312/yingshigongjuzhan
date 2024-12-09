@@ -376,19 +376,25 @@ h2 {
 
 /* 图标按钮样式 */
 .icon-btn {
-    background: none;
-    border: none;
     padding: 8px;
+    border: none;
+    background: none;
     cursor: pointer;
-    font-size: 20px;
-    border-radius: 4px;
+    font-size: 18px;
     transition: all 0.2s ease;
-    line-height: 1;
+    border-radius: 4px;
 }
 
 .icon-btn:hover {
-    background-color: rgba(78, 84, 200, 0.1);
-    transform: translateY(-1px);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.icon-btn.danger {
+    color: #ff4d4f;
+}
+
+.icon-btn.danger:hover {
+    background-color: rgba(255, 77, 79, 0.1);
 }
 
 /* 移除之前的tool-bar样式 */
