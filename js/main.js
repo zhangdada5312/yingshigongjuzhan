@@ -304,7 +304,7 @@ ${content}
 提示：复制上方网盘链接到浏览器搜索打开即可保存观看
 资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
 
-        // 显示格式化后的内容
+        // 显示格式化��的内容
         document.getElementById('outputText').textContent = formattedContent;
         
         // 保存到历史记录
@@ -354,6 +354,7 @@ ${content}
         try {
             // 确保XLSX对象存在
             if (typeof XLSX === 'undefined') {
+                alert('正在加载必要组件，请稍后再试...');
                 await loadSheetJS();
             }
 
@@ -384,14 +385,24 @@ ${content}
             console.log('导出成功');
         } catch (error) {
             console.error('导出失败:', error);
-            alert('导出失败，请刷新页面重试');
+            alert('导出功能初始化失败，请刷新页面后再试');
         }
     });
 
     // 导入链接按钮事件
     importLinks.addEventListener('click', () => {
         console.log('点击导入按钮');
-        fileInput.click();
+        if (typeof XLSX === 'undefined') {
+            alert('正在加载必要组件，请稍后再试...');
+            loadSheetJS().then(() => {
+                fileInput.click();
+            }).catch(error => {
+                console.error('组件加载失败:', error);
+                alert('导入功能初始化失败，请刷新页面后再试');
+            });
+        } else {
+            fileInput.click();
+        }
     });
 
     // 文件输入框变化事件
@@ -399,6 +410,13 @@ ${content}
         console.log('选择文件');
         const file = e.target.files[0];
         if (!file) return;
+
+        // 检查文件类型
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            alert('请选择Excel文件（.xlsx或.xls格式）');
+            fileInput.value = '';
+            return;
+        }
 
         try {
             // 确保XLSX对象存在
@@ -409,10 +427,28 @@ ${content}
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
+                    console.log('开始解析文件');
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        throw new Error('Excel文件没有工作表');
+                    }
+                    
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    if (!worksheet) {
+                        throw new Error('无法读取工作表内容');
+                    }
+                    
                     const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    if (!jsonData || jsonData.length === 0) {
+                        throw new Error('Excel文件中没有数据');
+                    }
+
+                    // 验证数据格式
+                    if (!jsonData[0].hasOwnProperty('电影名称') || !jsonData[0].hasOwnProperty('链接地址')) {
+                        throw new Error('Excel文件格式不正确，请确保包含"电影名称"和"链接地址"列');
+                    }
 
                     // 获取现有链接
                     const existingLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
@@ -422,7 +458,11 @@ ${content}
                         title: row['电影名称'],
                         link: row['链接地址'],
                         timestamp: new Date().getTime()
-                    }));
+                    })).filter(link => link.title && link.link); // 过滤掉空数据
+
+                    if (newLinks.length === 0) {
+                        throw new Error('没有找到有效的链接数据');
+                    }
 
                     // 合并链接并去重
                     const allLinks = [...existingLinks, ...newLinks];
@@ -434,17 +474,23 @@ ${content}
                     localStorage.setItem(LINKS_KEY, JSON.stringify(uniqueLinks));
                     loadSavedLinks();
                     console.log('导入成功');
-                    alert('导入成功！');
+                    alert(`成功导入 ${newLinks.length} 条链接！`);
                 } catch (error) {
-                    console.error('导入失败:', error);
-                    alert('导入失败，请确保文件格式正确');
+                    console.error('解析文件失败:', error);
+                    alert(error.message || '导入失败，请确保文件格式正确');
                 }
             };
+
+            reader.onerror = (error) => {
+                console.error('读取文件失败:', error);
+                alert('读取文件失败，请重试');
+            };
+
             reader.readAsArrayBuffer(file);
             fileInput.value = ''; // 重置文件输入框
         } catch (error) {
             console.error('导入失败:', error);
-            alert('导入失败，请刷新页面重试');
+            alert('导入功能初始化失败，请刷新页面后再试');
         }
     });
 }
@@ -515,265 +561,45 @@ function loadSavedLinks() {
     });
 }
 
-// 在文件开头添加 SheetJS CDN
-document.head.innerHTML += '<script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>';
-
-// 在页面加载时引入SheetJS
-function loadSheetJS() {
+// 加载SheetJS库
+async function loadSheetJS() {
     return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = "https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js";
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load SheetJS'));
-        document.head.appendChild(script);
-    });
-}
-
-// SheetJS加载完成
-loadSheetJS().then(() => {
-    console.log('SheetJS loaded successfully');
-}).catch(error => {
-    console.error('Error loading SheetJS:', error);
-});
-
-// 修改导出功能
-exportLinks.addEventListener('click', async () => {
-    // 确保XLSX对象存在
-    if (typeof XLSX === 'undefined') {
-        try {
-            await loadSheetJS();
-        } catch (error) {
-            alert('导出功能加载失败，请刷新页面重试');
+        if (typeof XLSX !== 'undefined') {
+            resolve();
             return;
         }
-    }
 
-    const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-    if (links.length === 0) {
-        alert('没有可导出的链接');
-        return;
-    }
+        const script = document.createElement('script');
+        // 使用多个CDN源，如果一个失败就尝试下一个
+        const cdnUrls = [
+            "https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js",
+            "https://unpkg.com/xlsx/dist/xlsx.full.min.js",
+            "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"
+        ];
 
-    // 准备Excel数据
-    const excelData = links.map(item => ({
-        '电影名称': item.title,
-        '链接地址': item.link,
-        '保存时间': new Date(item.timestamp).toLocaleString()
-    }));
+        let currentCdnIndex = 0;
 
-    // 创建工作簿和工作表
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(excelData);
+        function tryLoadScript() {
+            if (currentCdnIndex >= cdnUrls.length) {
+                reject(new Error('无法加载必要组件，请检查网络连接'));
+                return;
+            }
 
-    // 设置列宽
-    const colWidths = [
-        { wch: 30 }, // 电影名称
-        { wch: 50 }, // 链接地址
-        { wch: 20 }  // 保存时间
-    ];
-    ws['!cols'] = colWidths;
-
-    // 添加工作表到工作簿
-    XLSX.utils.book_append_sheet(wb, ws, "链接列表");
-
-    // 导出文件
-    XLSX.writeFile(wb, `影视链接_${new Date().toLocaleDateString()}.xlsx`);
-});
-
-// 导入链接
-importLinks.addEventListener('click', () => {
-    fileInput.click();
-});
-
-fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            // 获取现有链接
-            const existingLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-
-            // 处理导入的数据
-            const newLinks = jsonData.map(row => ({
-                title: row['电影名称'],
-                link: row['链接地址'],
-                timestamp: new Date().getTime()
-            }));
-
-            // 合并链接并去重
-            const allLinks = [...existingLinks, ...newLinks];
-            const uniqueLinks = allLinks.filter((link, index, self) =>
-                index === self.findIndex((t) => t.title === link.title && t.link === link.link)
-            );
-
-            // 保存到本地存储
-            localStorage.setItem(LINKS_KEY, JSON.stringify(uniqueLinks));
-            loadSavedLinks();
-            alert('导入成功！');
-        } catch (error) {
-            console.error('导入失败:', error);
-            alert('导入失败，请确保文件格式正确');
+            script.src = cdnUrls[currentCdnIndex];
+            script.onload = () => {
+                console.log('SheetJS加载成功');
+                resolve();
+            };
+            script.onerror = () => {
+                console.error(`从 ${cdnUrls[currentCdnIndex]} 加载失败，尝试下一个源`);
+                currentCdnIndex++;
+                tryLoadScript();
+            };
         }
-    };
-    reader.readAsArrayBuffer(file);
-    fileInput.value = ''; // 重置文件输入
-});
 
-// 格式化内容
-formatBtn.addEventListener('click', () => {
-    const content = contentInput.value.trim();
-    if (!content) {
-        alert('请输入需要整理的内容');
-        return;
-    }
-
-    // 提取电影名称
-    const movieNameMatch = content.match(/《([^》]+)》/);
-    const movieName = movieNameMatch ? movieNameMatch[1] : '未知电影';
-    
-    // 查找匹配的链接
-    const savedLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-    const matchedLink = savedLinks.find(link => 
-        link.title.includes(movieName) || movieName.includes(link.title)
-    );
-    
-    // 构建格式化内容
-    const formattedContent = `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
-提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
-
-${content}
-
-《${movieName}》（资源尽快保存，随时失效）
-
-链接：${matchedLink ? matchedLink.link : ''}
-
-提示：复制上方网盘链接到浏览器搜索打开即可保存观看
-资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
-
-    // 显示格式化后的内容
-    document.getElementById('outputText').textContent = formattedContent;
-    
-    // 保存到历史记录
-    saveToHistory(content, formattedContent, movieName);
-});
-
-// 复制内容
-copyBtn.addEventListener('click', () => {
-    const content = document.getElementById('outputText').textContent;
-    if (!content) {
-        alert('没有可复制的内容');
-        return;
-    }
-
-    navigator.clipboard.writeText(content)
-        .then(() => {
-            console.log('内容已复制');
-        })
-        .catch(err => {
-            console.error('复制失败:', err);
-            alert('复制失败，请手动复制');
-        });
-});
-
-// 清空输入
-clearBtn.addEventListener('click', () => {
-    contentInput.value = '';
-    document.getElementById('outputText').textContent = '';
-});
-
-// 搜索历史记录
-searchHistory.addEventListener('input', (e) => {
-    currentHistoryPage = 1; // 搜索时重置到第一页
-    loadHistory(e.target.value);
-});
-
-// 加载历史记录
-function loadHistory(searchTerm = '') {
-    console.log('加载历史记录，当前页码：', currentHistoryPage);
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    
-    // 应用搜索过滤
-    const filteredHistory = history.filter(item => {
-        const searchLower = searchTerm.toLowerCase();
-        const title = item.movieName || '';
-        return title.toLowerCase().includes(searchLower);
+        tryLoadScript();
+        document.head.appendChild(script);
     });
-
-    const totalPages = Math.ceil(filteredHistory.length / PAGE_SIZE);
-    if (currentHistoryPage > totalPages) {
-        currentHistoryPage = totalPages || 1;
-    }
-
-    console.log('历史记录总页数：', totalPages);
-    historyPageInfo.textContent = `${currentHistoryPage}/${totalPages}`;
-    historyPrevPage.disabled = currentHistoryPage === 1;
-    historyNextPage.disabled = currentHistoryPage === totalPages;
-
-    const startIndex = (currentHistoryPage - 1) * PAGE_SIZE;
-    const pageData = filteredHistory.slice(startIndex, startIndex + PAGE_SIZE);
-
-    historyList.innerHTML = '';
-    pageData.forEach((item) => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `
-            <div class="item-content">
-                <span class="title">${item.movieName || ''}</span>
-                <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
-            </div>
-            <button class="delete-btn" type="button">删除</button>
-        `;
-        
-        // 点击内容区域显示格式化内容
-        div.querySelector('.item-content').onclick = () => {
-            document.getElementById('outputText').textContent = item.formatted || '';
-        };
-        
-        // 删除按钮事件
-        div.querySelector('.delete-btn').onclick = (e) => {
-            e.stopPropagation();
-            showConfirmModal(() => {
-                const allHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                const realIndex = allHistory.findIndex(h => 
-                    h.movieName === item.movieName && 
-                    h.timestamp === item.timestamp
-                );
-                if (realIndex !== -1) {
-                    allHistory.splice(realIndex, 1);
-                    localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
-                    loadHistory(searchTerm);
-                }
-            });
-        };
-        
-        historyList.appendChild(div);
-    });
-}
-
-// 保存到历史记录
-function saveToHistory(originalContent, formattedContent, movieName) {
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    history.unshift({
-        movieName,  // 保持原有的字段名
-        original: originalContent,  // 保持原有的字段名
-        formatted: formattedContent,  // 保持原有的字段名
-        timestamp: Date.now()
-    });
-    
-    // 限制历史记录数量
-    if (history.length > 100) {
-        history.pop();
-    }
-    
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    loadHistory();
 }
 
 // 确保在页面加载完成后执行
