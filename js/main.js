@@ -41,15 +41,21 @@ let deleteItemCallback = null;
 
 // 等待DOM加载完成后再初始化
 document.addEventListener('DOMContentLoaded', () => {
-    // 初始化DOM元素
-    initializeDOMElements();
-    // 初始化样式
-    initializeStyles();
-    // 初始化事件监听器
-    initializeEventListeners();
-    // 加载数据
-    loadHistory();
-    loadSavedLinks();
+    try {
+        console.log('开始初始化...');
+        // 初始化DOM元素
+        initializeDOMElements();
+        // 初始化样式
+        initializeStyles();
+        // 初始化事件监听器
+        initializeEventListeners();
+        // 加载数据
+        loadHistory();
+        loadSavedLinks();
+        console.log('初始化完成');
+    } catch (error) {
+        console.error('初始化失败:', error);
+    }
 });
 
 // 初始化DOM元素
@@ -301,7 +307,7 @@ function initializeEventListeners() {
         );
         
         // 构建格式化内容
-        const formattedContent = `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
+        const formattedContent = `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间��👇，往下翻就行
 提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
 
 ${content}
@@ -456,7 +462,7 @@ ${content}
 
                     // 验证数据格式
                     if (!jsonData[0].hasOwnProperty('电影名称') || !jsonData[0].hasOwnProperty('链接地址')) {
-                        throw new Error('Excel文件格式不正确，请确保���含"电影名称"和"链接地址"列');
+                        throw new Error('Excel文件格式不正确，请确保含"电影名称"和"链接地址"列');
                     }
 
                     // 获取现有链接
@@ -504,21 +510,26 @@ ${content}
     });
 
     // 删除所有链接按钮事件
-    clearAllLinks.addEventListener('click', () => {
-        console.log('点击删除所有链接按钮');
-        const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-        if (links.length === 0) {
-            alert('没有可删除的链接');
-            return;
-        }
+    if (clearAllLinks) {  // 添加检查
+        clearAllLinks.addEventListener('click', () => {
+            console.log('点击删除所有链接按钮');
+            const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+            if (links.length === 0) {
+                alert('没有可删除的链接');
+                return;
+            }
 
-        showConfirmModal(() => {
-            console.log('确认删除所有链接');
-            localStorage.setItem(LINKS_KEY, '[]');
-            loadSavedLinks();
-            alert('已删除所有链接');
-        }, '确认删除', '确定要删除所有链接吗？此操作不可恢复');
-    });
+            // 使用简单的确认对话框
+            if (confirm('确定要删除所有链接吗？此操作不可恢复')) {
+                console.log('确认删除所有链接');
+                localStorage.setItem(LINKS_KEY, '[]');
+                loadSavedLinks();
+                alert('已删除所有链接');
+            }
+        });
+    } else {
+        console.error('未找到删除所有链接按钮');
+    }
 }
 
 // 加载保存的链接
@@ -630,7 +641,7 @@ async function loadSheetJS() {
 
 // 确保在页面加载完成后执行
 document.addEventListener('DOMContentLoaded', () => {
-    // 获取导出历史记录按钮
+    // 获��导出历史记录按钮
     const exportHistory = document.getElementById('exportHistory');
 
     // 加载SheetJS库
