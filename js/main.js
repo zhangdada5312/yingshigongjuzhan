@@ -1,14 +1,31 @@
 // DOM 元素
-const movieTitle = document.getElementById('movieTitle');
-const movieLink = document.getElementById('movieLink');
-const addLinkBtn = document.getElementById('addLink');
-const contentInput = document.getElementById('contentInput');
-const formatBtn = document.getElementById('formatBtn');
-const copyBtn = document.getElementById('copyBtn');
-const clearBtn = document.getElementById('clearBtn');
-const searchHistory = document.getElementById('searchHistory');
-const historyList = document.getElementById('historyList');
-const savedLinks = document.getElementById('savedLinks');
+let movieTitle;
+let movieLink;
+let addLinkBtn;
+let contentInput;
+let formatBtn;
+let copyBtn;
+let clearBtn;
+let searchHistory;
+let historyList;
+let savedLinks;
+let searchLinks;
+let exportLinks;
+let importLinks;
+let fileInput;
+
+// 分页元素
+let historyPrevPage;
+let historyNextPage;
+let historyPageInfo;
+let linksPrevPage;
+let linksNextPage;
+let linksPageInfo;
+
+// 确认对话框元素
+let confirmModal;
+let confirmDelete;
+let cancelDelete;
 
 // 本地存储键
 const HISTORY_KEY = 'articleHistory';
@@ -18,37 +35,382 @@ const LINKS_KEY = 'savedLinks';
 const PAGE_SIZE = 10;
 let currentHistoryPage = 1;
 let currentLinksPage = 1;
-
-// 获取分页元素
-const historyPrevPage = document.getElementById('historyPrevPage');
-const historyNextPage = document.getElementById('historyNextPage');
-const historyPageInfo = document.getElementById('historyPageInfo');
-const linksPrevPage = document.getElementById('linksPrevPage');
-const linksNextPage = document.getElementById('linksNextPage');
-const linksPageInfo = document.getElementById('linksPageInfo');
-
-// 添加全局变量
+let searchLinksText = '';
 let deleteItemCallback = null;
-const confirmModal = document.getElementById('confirmModal');
-const confirmDelete = document.getElementById('confirmDelete');
-const cancelDelete = document.getElementById('cancelDelete');
+
+// 等待DOM加载完成后再初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 初始化DOM元素
+    initializeDOMElements();
+    // 初始化样式
+    initializeStyles();
+    // 初始化事件监听器
+    initializeEventListeners();
+    // 加载数据
+    loadHistory();
+    loadSavedLinks();
+});
+
+// 初始化DOM元素
+function initializeDOMElements() {
+    movieTitle = document.getElementById('movieTitle');
+    movieLink = document.getElementById('movieLink');
+    addLinkBtn = document.getElementById('addLink');
+    contentInput = document.getElementById('contentInput');
+    formatBtn = document.getElementById('formatBtn');
+    copyBtn = document.getElementById('copyBtn');
+    clearBtn = document.getElementById('clearBtn');
+    searchHistory = document.getElementById('searchHistory');
+    historyList = document.getElementById('historyList');
+    savedLinks = document.getElementById('savedLinks');
+    searchLinks = document.getElementById('searchLinks');
+    exportLinks = document.getElementById('exportLinks');
+    importLinks = document.getElementById('importLinks');
+    fileInput = document.getElementById('fileInput');
+
+    historyPrevPage = document.getElementById('historyPrevPage');
+    historyNextPage = document.getElementById('historyNextPage');
+    historyPageInfo = document.getElementById('historyPageInfo');
+    linksPrevPage = document.getElementById('linksPrevPage');
+    linksNextPage = document.getElementById('linksNextPage');
+    linksPageInfo = document.getElementById('linksPageInfo');
+
+    confirmModal = document.getElementById('confirmModal');
+    confirmDelete = document.getElementById('confirmDelete');
+    cancelDelete = document.getElementById('cancelDelete');
+}
+
+// 初始化样式
+function initializeStyles() {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        min-width: 300px;
+    }
+
+    .modal-buttons {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .delete-btn {
+        padding: 4px 8px;
+        background-color: #ff4d4f;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .history-item:hover .delete-btn {
+        opacity: 1;
+    }
+
+    .delete-btn:hover {
+        background-color: #ff7875;
+    }
+    `;
+    document.head.appendChild(styleSheet);
+}
+
+// 显示确认对话框
+function showConfirmModal(callback) {
+    console.log('显示确认对话框');
+    deleteItemCallback = callback;
+    confirmModal.style.display = 'flex';
+    
+    // 添加点击外部关闭功能
+    const closeOnOutsideClick = (e) => {
+        if (e.target === confirmModal) {
+            hideConfirmModal();
+            confirmModal.removeEventListener('click', closeOnOutsideClick);
+        }
+    };
+    confirmModal.addEventListener('click', closeOnOutsideClick);
+}
+
+// 隐藏确认对话框
+function hideConfirmModal() {
+    console.log('隐藏确认对话框');
+    confirmModal.style.display = 'none';
+    deleteItemCallback = null;
+}
+
+// 初始化事件监听器
+function initializeEventListeners() {
+    // 搜索功能
+    searchLinks.addEventListener('input', (e) => {
+        searchLinksText = e.target.value;
+        currentLinksPage = 1;
+        loadSavedLinks();
+    });
+
+    // 分页事件
+    linksPrevPage.addEventListener('click', () => {
+        console.log('上一页按钮被点击');
+        if (currentLinksPage > 1) {
+            currentLinksPage--;
+            loadSavedLinks();
+        }
+    });
+
+    linksNextPage.addEventListener('click', () => {
+        console.log('下一页按钮被点击');
+        const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+        const filteredLinks = links.filter(item => 
+            item.title.toLowerCase().includes(searchLinksText.toLowerCase()) ||
+            item.link.toLowerCase().includes(searchLinksText.toLowerCase())
+        );
+        const totalPages = Math.ceil(filteredLinks.length / PAGE_SIZE);
+        
+        if (currentLinksPage < totalPages) {
+            currentLinksPage++;
+            loadSavedLinks();
+        }
+    });
+
+    // 确认对话框事件
+    confirmDelete.addEventListener('click', () => {
+        console.log('确认删除');
+        if (deleteItemCallback) {
+            deleteItemCallback();
+        }
+        hideConfirmModal();
+    });
+
+    cancelDelete.addEventListener('click', () => {
+        console.log('取消删除');
+        hideConfirmModal();
+    });
+
+    // 添加链接事件
+    addLinkBtn.addEventListener('click', () => {
+        const title = movieTitle.value.trim();
+        const link = movieLink.value.trim();
+        
+        if (!title || !link) {
+            alert('请输入电影名称和链接地址');
+            return;
+        }
+
+        // 验证链接格式
+        try {
+            new URL(link);
+        } catch (e) {
+            alert('请输入有效的链接地址');
+            return;
+        }
+
+        const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+        
+        // 检查重复链接
+        const isDuplicate = links.some(item => item.link === link);
+        if (isDuplicate) {
+            alert('该链接已存在');
+            return;
+        }
+
+        // 检查存储限制
+        if (links.length >= 1000) {
+            alert('链接数量已达到上限，请删除一些旧链接');
+            return;
+        }
+
+        links.unshift({ title, link, timestamp: Date.now() });
+        localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+        
+        movieTitle.value = '';
+        movieLink.value = '';
+        loadSavedLinks();
+    });
+
+    // 清空输入按钮事件
+    clearBtn.addEventListener('click', () => {
+        console.log('点击清空按钮');
+        contentInput.value = '';
+        document.getElementById('outputText').textContent = '';
+    });
+
+    // 复制内容按钮事件
+    copyBtn.addEventListener('click', () => {
+        console.log('点击复制按钮');
+        const content = document.getElementById('outputText').textContent;
+        if (!content) {
+            alert('没有可复制的内容');
+            return;
+        }
+
+        navigator.clipboard.writeText(content)
+            .then(() => {
+                console.log('内容已复制');
+            })
+            .catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            });
+    });
+
+    // 格式化内容按钮事件
+    formatBtn.addEventListener('click', () => {
+        console.log('点击格式化按钮');
+        const content = contentInput.value.trim();
+        if (!content) {
+            alert('请输入需要整理的内容');
+            return;
+        }
+
+        // 提取电影名称
+        const movieNameMatch = content.match(/《([^》]+)》/);
+        const movieName = movieNameMatch ? movieNameMatch[1] : '未知电影';
+        
+        // 查找匹配的链接
+        const savedLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+        const matchedLink = savedLinks.find(link => 
+            link.title.includes(movieName) || movieName.includes(link.title)
+        );
+        
+        // 构建格式化内容
+        const formattedContent = `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
+提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
+
+${content}
+
+《${movieName}》（资源尽快保存，随时失效）
+
+链接：${matchedLink ? matchedLink.link : ''}
+
+提示：复制上方网盘链接到浏览器搜索打开即可保存观看
+资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
+
+        // 显示格式化��的内容
+        document.getElementById('outputText').textContent = formattedContent;
+        
+        // 保存到历史记录
+        saveToHistory(content, formattedContent, movieName);
+    });
+
+    // 历史记录分页事件
+    historyPrevPage.addEventListener('click', () => {
+        console.log('历史记录上一页按钮被点击');
+        if (currentHistoryPage > 1) {
+            currentHistoryPage--;
+            loadHistory(searchHistory.value);
+        }
+    });
+
+    historyNextPage.addEventListener('click', () => {
+        console.log('历史记录下一页按钮被点击');
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const filteredHistory = history.filter(item => {
+            const searchTerm = searchHistory.value.toLowerCase();
+            const title = item.movieName || '';
+            return title.toLowerCase().includes(searchTerm);
+        });
+        const totalPages = Math.ceil(filteredHistory.length / PAGE_SIZE);
+        
+        if (currentHistoryPage < totalPages) {
+            currentHistoryPage++;
+            loadHistory(searchHistory.value);
+        }
+    });
+
+    // 历史记录搜索
+    searchHistory.addEventListener('input', (e) => {
+        currentHistoryPage = 1;
+        loadHistory(e.target.value);
+    });
+}
+
+// 加载保存的链接
+function loadSavedLinks() {
+    console.log('加载链接列表');
+    const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+    
+    // 应用搜索过滤
+    const filteredLinks = links.filter(item => 
+        item.title.toLowerCase().includes(searchLinksText.toLowerCase()) ||
+        item.link.toLowerCase().includes(searchLinksText.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredLinks.length / PAGE_SIZE);
+    if (currentLinksPage > totalPages) {
+        currentLinksPage = totalPages || 1;
+    }
+
+    console.log('当前页码:', currentLinksPage, '总页数:', totalPages);
+    linksPageInfo.textContent = `${currentLinksPage}/${totalPages}`;
+    linksPrevPage.disabled = currentLinksPage === 1;
+    linksNextPage.disabled = currentLinksPage === totalPages;
+
+    const startIndex = (currentLinksPage - 1) * PAGE_SIZE;
+    const pageData = filteredLinks.slice(startIndex, startIndex + PAGE_SIZE);
+
+    savedLinks.innerHTML = '';
+    pageData.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+            <div class="item-content">
+                <span class="title">${item.title}</span>
+                <span class="link">${item.link}</span>
+                <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
+            </div>
+            <button class="delete-btn" type="button">删除</button>
+        `;
+        
+        div.querySelector('.item-content').onclick = () => {
+            movieTitle.value = item.title;
+            movieLink.value = item.link;
+        };
+        
+        const deleteBtn = div.querySelector('.delete-btn');
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            console.log('点击删除按钮');
+            showConfirmModal(() => {
+                console.log('执行删除操作');
+                const allLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+                const realIndex = allLinks.findIndex(link => 
+                    link.title === item.title && 
+                    link.link === item.link && 
+                    link.timestamp === item.timestamp
+                );
+                if (realIndex !== -1) {
+                    allLinks.splice(realIndex, 1);
+                    localStorage.setItem(LINKS_KEY, JSON.stringify(allLinks));
+                    loadSavedLinks();
+                }
+            });
+        };
+        
+        savedLinks.appendChild(div);
+    });
+}
 
 // 在文件开头添加 SheetJS CDN
 document.head.innerHTML += '<script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>';
-
-// 获取新增的DOM元素
-const searchLinks = document.getElementById('searchLinks');
-const exportLinks = document.getElementById('exportLinks');
-const importLinks = document.getElementById('importLinks');
-const fileInput = document.getElementById('fileInput');
-
-// 搜索功能
-let searchLinksText = '';
-searchLinks.addEventListener('input', (e) => {
-    searchLinksText = e.target.value;
-    currentLinksPage = 1; // 重置到第一页
-    loadSavedLinks();
-});
 
 // 在页面加载时引入SheetJS
 function loadSheetJS() {
@@ -158,29 +520,6 @@ fileInput.addEventListener('change', (e) => {
     fileInput.value = ''; // 重置文件输入
 });
 
-// 初始化
-loadHistory();
-loadSavedLinks();
-
-// 添加链接
-addLinkBtn.addEventListener('click', () => {
-    const title = movieTitle.value.trim();
-    const link = movieLink.value.trim();
-    
-    if (!title || !link) {
-        alert('请输入电影名称和链接地址');
-        return;
-    }
-
-    const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-    links.unshift({ title, link, timestamp: Date.now() });
-    localStorage.setItem(LINKS_KEY, JSON.stringify(links));
-    
-    movieTitle.value = '';
-    movieLink.value = '';
-    loadSavedLinks();
-});
-
 // 格式化内容
 formatBtn.addEventListener('click', () => {
     const content = contentInput.value.trim();
@@ -210,7 +549,7 @@ ${content}
 链接：${matchedLink ? matchedLink.link : ''}
 
 提示：复制上方网盘链接到浏览器搜索打开即可保存观看
-资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权，联系立删`;
+资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
 
     // 显示格式化后的内容
     document.getElementById('outputText').textContent = formattedContent;
@@ -228,8 +567,13 @@ copyBtn.addEventListener('click', () => {
     }
 
     navigator.clipboard.writeText(content)
-        .then(() => alert('内容已复制到剪贴板'))
-        .catch(err => console.error('复制失败:', err));
+        .then(() => {
+            console.log('内容已复制');
+        })
+        .catch(err => {
+            console.error('复制失败:', err);
+            alert('复制失败，请手动复制');
+        });
 });
 
 // 清空输入
@@ -244,39 +588,16 @@ searchHistory.addEventListener('input', (e) => {
     loadHistory(e.target.value);
 });
 
-// 显示确认弹窗
-function showConfirmModal(callback) {
-    console.log('显示确认框'); // 调试日志
-    deleteItemCallback = callback;
-    confirmModal.classList.add('show');
-}
-
-// 隐藏确认弹窗
-function hideConfirmModal() {
-    console.log('隐藏确认框'); // 调试日志
-    confirmModal.classList.remove('show');
-    deleteItemCallback = null;
-}
-
-// 绑确认和取消按钮的件
-confirmDelete.addEventListener('click', () => {
-    console.log('点击确认按钮'); // 调试日志
-    if (deleteItemCallback) {
-        deleteItemCallback();
-    }
-    hideConfirmModal();
-});
-
-cancelDelete.addEventListener('click', () => {
-    console.log('点击取消按钮'); // 调试日志
-    hideConfirmModal();
-});
-
 // 加载历史记录
 function loadHistory(searchTerm = '') {
+    console.log('加载历史记录，当前页码：', currentHistoryPage);
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    
+    // 应用搜索过滤
     const filteredHistory = history.filter(item => {
-        return item.movieName.toLowerCase().includes(searchTerm.toLowerCase());
+        const searchLower = searchTerm.toLowerCase();
+        const title = item.movieName || '';
+        return title.toLowerCase().includes(searchLower);
     });
 
     const totalPages = Math.ceil(filteredHistory.length / PAGE_SIZE);
@@ -284,6 +605,7 @@ function loadHistory(searchTerm = '') {
         currentHistoryPage = totalPages || 1;
     }
 
+    console.log('历史记录总页数：', totalPages);
     historyPageInfo.textContent = `${currentHistoryPage}/${totalPages}`;
     historyPrevPage.disabled = currentHistoryPage === 1;
     historyNextPage.disabled = currentHistoryPage === totalPages;
@@ -292,145 +614,61 @@ function loadHistory(searchTerm = '') {
     const pageData = filteredHistory.slice(startIndex, startIndex + PAGE_SIZE);
 
     historyList.innerHTML = '';
-    pageData.forEach((item, index) => {
+    pageData.forEach((item) => {
         const div = document.createElement('div');
         div.className = 'history-item';
         div.innerHTML = `
             <div class="item-content">
-                <span class="title">${item.movieName}</span>
+                <span class="title">${item.movieName || ''}</span>
                 <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
             </div>
-            <button class="delete-btn">删除</button>
+            <button class="delete-btn" type="button">删除</button>
         `;
         
         // 点击内容区域显示格式化内容
         div.querySelector('.item-content').onclick = () => {
-            document.getElementById('outputText').textContent = item.formatted;
+            document.getElementById('outputText').textContent = item.formatted || '';
         };
         
-        // 点击删除按钮
+        // 删除按钮事件
         div.querySelector('.delete-btn').onclick = (e) => {
             e.stopPropagation();
-            const allHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-            const realIndex = startIndex + index;
-            allHistory.splice(realIndex, 1);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
-            loadHistory(searchTerm);
+            showConfirmModal(() => {
+                const allHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+                const realIndex = allHistory.findIndex(h => 
+                    h.movieName === item.movieName && 
+                    h.timestamp === item.timestamp
+                );
+                if (realIndex !== -1) {
+                    allHistory.splice(realIndex, 1);
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
+                    loadHistory(searchTerm);
+                }
+            });
         };
         
         historyList.appendChild(div);
     });
 }
 
-// 修改加载保存链接函数中的列表项显示
-function loadSavedLinks() {
-    const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-    
-    // 应用搜索过滤
-    const filteredLinks = links.filter(item => 
-        item.title.toLowerCase().includes(searchLinksText.toLowerCase()) ||
-        item.link.toLowerCase().includes(searchLinksText.toLowerCase())
-    );
-
-    const totalPages = Math.ceil(filteredLinks.length / PAGE_SIZE);
-    if (currentLinksPage > totalPages) {
-        currentLinksPage = totalPages || 1;
-    }
-
-    linksPageInfo.textContent = `${currentLinksPage}/${totalPages}`;
-    linksPrevPage.disabled = currentLinksPage === 1;
-    linksNextPage.disabled = currentLinksPage === totalPages;
-
-    const startIndex = (currentLinksPage - 1) * PAGE_SIZE;
-    const pageData = filteredLinks.slice(startIndex, startIndex + PAGE_SIZE);
-
-    savedLinks.innerHTML = '';
-    pageData.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `
-            <div class="item-content">
-                <span class="title">${item.title}</span>
-                <span class="link">${item.link}</span>
-                <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
-            </div>
-            <button class="delete-btn" type="button">删除</button>
-        `;
-        
-        div.querySelector('.item-content').onclick = () => {
-            movieTitle.value = item.title;
-            movieLink.value = item.link;
-        };
-        
-        div.querySelector('.delete-btn').onclick = (e) => {
-            e.stopPropagation();
-            const allLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-            const realIndex = links.findIndex(link => 
-                link.title === item.title && 
-                link.link === item.link && 
-                link.timestamp === item.timestamp
-            );
-            if (realIndex !== -1) {
-                allLinks.splice(realIndex, 1);
-                localStorage.setItem(LINKS_KEY, JSON.stringify(allLinks));
-                loadSavedLinks();
-            }
-        };
-        
-        savedLinks.appendChild(div);
-    });
-}
-
-// 保存到历记录
-function saveToHistory(original, formatted, movieName) {
+// 保存到历史记录
+function saveToHistory(originalContent, formattedContent, movieName) {
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     history.unshift({
-        original,
-        formatted,
-        movieName,
+        movieName,  // 保持原有的字段名
+        original: originalContent,  // 保持原有的字段名
+        formatted: formattedContent,  // 保持原有的字段名
         timestamp: Date.now()
     });
     
-    if (history.length > 20) {
+    // 限制历史记录数量
+    if (history.length > 100) {
         history.pop();
     }
     
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     loadHistory();
 }
-
-// 添加分页事件监听
-historyPrevPage.addEventListener('click', () => {
-    if (currentHistoryPage > 1) {
-        currentHistoryPage--;
-        loadHistory(searchHistory.value);
-    }
-});
-
-historyNextPage.addEventListener('click', () => {
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    const totalPages = Math.ceil(history.length / PAGE_SIZE);
-    if (currentHistoryPage < totalPages) {
-        currentHistoryPage++;
-        loadHistory(searchHistory.value);
-    }
-});
-
-linksPrevPage.addEventListener('click', () => {
-    if (currentLinksPage > 1) {
-        currentLinksPage--;
-        loadSavedLinks();
-    }
-});
-
-linksNextPage.addEventListener('click', () => {
-    const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-    const totalPages = Math.ceil(links.length / PAGE_SIZE);
-    if (currentLinksPage < totalPages) {
-        currentLinksPage++;
-        loadSavedLinks();
-    }
-});
 
 // 确保在页面加载完成后执行
 document.addEventListener('DOMContentLoaded', () => {
