@@ -304,7 +304,7 @@ ${content}
 提示：复制上方网盘链接到浏览器搜索打开即可保存观看
 资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
 
-        // 显示格式化��的内容
+        // 显示格式化后的内容
         document.getElementById('outputText').textContent = formattedContent;
         
         // 保存到历史记录
@@ -340,6 +340,112 @@ ${content}
     searchHistory.addEventListener('input', (e) => {
         currentHistoryPage = 1;
         loadHistory(e.target.value);
+    });
+
+    // 导出链接按钮事件
+    exportLinks.addEventListener('click', async () => {
+        console.log('点击导出按钮');
+        const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+        if (links.length === 0) {
+            alert('没有可导出的链接');
+            return;
+        }
+
+        try {
+            // 确保XLSX对象存在
+            if (typeof XLSX === 'undefined') {
+                await loadSheetJS();
+            }
+
+            // 准备Excel数据
+            const excelData = links.map(item => ({
+                '电影名称': item.title,
+                '链接地址': item.link,
+                '保存时间': new Date(item.timestamp).toLocaleString()
+            }));
+
+            // 创建工作簿和工作表
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+
+            // 设置列宽
+            const colWidths = [
+                { wch: 30 }, // 电影名称
+                { wch: 50 }, // 链接地址
+                { wch: 20 }  // 保存时间
+            ];
+            ws['!cols'] = colWidths;
+
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(wb, ws, "链接列表");
+
+            // 导出文件
+            XLSX.writeFile(wb, `影视链接_${new Date().toLocaleDateString()}.xlsx`);
+            console.log('导出成功');
+        } catch (error) {
+            console.error('导出失败:', error);
+            alert('导出失败，请刷新页面重试');
+        }
+    });
+
+    // 导入链接按钮事件
+    importLinks.addEventListener('click', () => {
+        console.log('点击导入按钮');
+        fileInput.click();
+    });
+
+    // 文件输入框变化事件
+    fileInput.addEventListener('change', async (e) => {
+        console.log('选择文件');
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            // 确保XLSX对象存在
+            if (typeof XLSX === 'undefined') {
+                await loadSheetJS();
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    // 获取现有链接
+                    const existingLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+
+                    // 处理导入的数据
+                    const newLinks = jsonData.map(row => ({
+                        title: row['电影名称'],
+                        link: row['链接地址'],
+                        timestamp: new Date().getTime()
+                    }));
+
+                    // 合并链接并去重
+                    const allLinks = [...existingLinks, ...newLinks];
+                    const uniqueLinks = allLinks.filter((link, index, self) =>
+                        index === self.findIndex((t) => t.title === link.title && t.link === link.link)
+                    );
+
+                    // 保存到本地存储
+                    localStorage.setItem(LINKS_KEY, JSON.stringify(uniqueLinks));
+                    loadSavedLinks();
+                    console.log('导入成功');
+                    alert('导入成功！');
+                } catch (error) {
+                    console.error('导入失败:', error);
+                    alert('导入失败，请确保文件格式正确');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            fileInput.value = ''; // 重置文件输入框
+        } catch (error) {
+            console.error('导入失败:', error);
+            alert('导入失败，请刷新页面重试');
+        }
     });
 }
 
