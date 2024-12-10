@@ -240,19 +240,7 @@ function initializeEventListeners() {
 
         const links = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
         
-        // 检查重复链接
-        const isDuplicate = links.some(item => item.link === link);
-        if (isDuplicate) {
-            alert('该链接已存在');
-            return;
-        }
-
-        // 检查存储限制
-        if (links.length >= 1000) {
-            alert('链接数量已达到上限，请删除一些旧链接');
-            return;
-        }
-
+        // 直接添加新链接，不进行去重
         links.unshift({ title, link, timestamp: Date.now() });
         localStorage.setItem(LINKS_KEY, JSON.stringify(links));
         
@@ -290,40 +278,7 @@ function initializeEventListeners() {
     // 格式化内容按钮事件
     formatBtn.addEventListener('click', () => {
         console.log('点击格式化按钮');
-        const content = contentInput.value.trim();
-        if (!content) {
-            alert('请输入需要整理的内容');
-            return;
-        }
-
-        // 提取电影名称
-        const movieNameMatch = content.match(/《([^》]+)》/);
-        const movieName = movieNameMatch ? movieNameMatch[1] : '未知电影';
-        
-        // 查找匹配的链接
-        const savedLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-        const matchedLink = savedLinks.find(link => 
-            link.title.includes(movieName) || movieName.includes(link.title)
-        );
-        
-        // 构建格式化内容
-        const formattedContent = `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间��👇，往下翻就行
-提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
-
-${content}
-
-《${movieName}》（资源尽快保存，随时失效）
-
-链接：${matchedLink ? matchedLink.link : ''}
-
-提示：复制上方网盘链接到浏览器搜索打开即可保存观看
-资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权联系立删`;
-
-        // 显示格式化后的内容
-        document.getElementById('outputText').textContent = formattedContent;
-        
-        // 保存到历史记录
-        saveToHistory(content, formattedContent, movieName);
+        formatContent();
     });
 
     // 历史记录分页事件
@@ -461,8 +416,8 @@ ${content}
                     }
 
                     // 验证数据格式
-                    if (!jsonData[0].hasOwnProperty('电影名称') || !jsonData[0].hasOwnProperty('链接地址')) {
-                        throw new Error('Excel文件格式不正确，请确保含"电影名称"和"链接地址"列');
+                    if (!jsonData[0].hasOwnProperty('电影��称') || !jsonData[0].hasOwnProperty('链接地址')) {
+                        throw new Error('Excel文件格式正确，请确保含"电影名称"和"链接地址"列');
                     }
 
                     // 获取现有链接
@@ -521,7 +476,7 @@ ${content}
 
             // 使用简单的确认对话框
             if (confirm('确定要删除所有链接吗？此操作不可恢复')) {
-                console.log('确认删除所有链接');
+                console.log('确认���除所有链接');
                 localStorage.setItem(LINKS_KEY, '[]');
                 loadSavedLinks();
                 alert('已删除所有链接');
@@ -543,10 +498,8 @@ function loadSavedLinks() {
         item.link.toLowerCase().includes(searchLinksText.toLowerCase())
     );
 
-    const totalPages = Math.ceil(filteredLinks.length / PAGE_SIZE);
-    if (currentLinksPage > totalPages) {
-        currentLinksPage = totalPages || 1;
-    }
+    const totalPages = Math.ceil(filteredLinks.length / PAGE_SIZE) || 1;
+    currentLinksPage = Math.min(currentLinksPage, totalPages);
 
     console.log('当前页码:', currentLinksPage, '总页数:', totalPages);
     linksPageInfo.textContent = `${currentLinksPage}/${totalPages}`;
@@ -557,7 +510,7 @@ function loadSavedLinks() {
     const pageData = filteredLinks.slice(startIndex, startIndex + PAGE_SIZE);
 
     savedLinks.innerHTML = '';
-    pageData.forEach((item, index) => {
+    pageData.forEach((item) => {
         const div = document.createElement('div');
         div.className = 'history-item';
         div.innerHTML = `
@@ -578,7 +531,7 @@ function loadSavedLinks() {
         deleteBtn.onclick = (e) => {
             e.stopPropagation();
             console.log('点击删除按钮');
-            showConfirmModal(() => {
+            if (confirm('确定要删除这个链接吗？')) {
                 console.log('执行删除操作');
                 const allLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
                 const realIndex = allLinks.findIndex(link => 
@@ -591,11 +544,179 @@ function loadSavedLinks() {
                     localStorage.setItem(LINKS_KEY, JSON.stringify(allLinks));
                     loadSavedLinks();
                 }
-            });
+            }
         };
         
         savedLinks.appendChild(div);
     });
+}
+
+// 格式化内容
+function formatContent() {
+    const content = contentInput.value.trim();
+    if (!content) {
+        alert('请输入需要整理的内容');
+        return;
+    }
+
+    // 提取电影名称
+    const movieNameMatch = content.match(/《([^》]+)》/);
+    const movieName = movieNameMatch ? movieNameMatch[1] : '未知电影';
+    
+    // 查找匹配的链接（模糊匹配）
+    const savedLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+    const matchedLink = findBestMatchLink(movieName, savedLinks);
+    
+    // 构建格式化内容
+    const formattedContent = generateFormattedContent(movieName, content, matchedLink ? matchedLink.link : '');
+
+    // 显示格式化后的内容
+    document.getElementById('outputText').textContent = formattedContent;
+    
+    // 保存到历史记录（包含匹配到的链接）
+    saveToHistory(content, formattedContent, movieName, matchedLink ? matchedLink.link : '');
+}
+
+// 查找最佳匹配的链接
+function findBestMatchLink(movieName, links) {
+    if (!movieName || !links.length) return null;
+
+    // 清理电影名称（去除年份、特殊字符等）
+    const cleanMovieName = movieName.toLowerCase()
+        .replace(/\(\d{4}\)/, '') // 去除年份
+        .replace(/[\s\.\-\_\(\)\[\]]/g, '') // 去除空格和特殊字符
+        .trim();
+
+    // 对每个链接计算匹配度
+    const matches = links.map(link => {
+        const cleanTitle = link.title.toLowerCase()
+            .replace(/\(\d{4}\)/, '')
+            .replace(/[\s\.\-\_\(\)\[\]]/g, '')
+            .trim();
+
+        // 计算匹配分数
+        let score = 0;
+        if (cleanTitle === cleanMovieName) score = 100; // 完全匹配
+        else if (cleanTitle.includes(cleanMovieName)) score = 80; // 包含关系
+        else if (cleanMovieName.includes(cleanTitle)) score = 60; // 反向包含
+        else {
+            // 计算部分匹配
+            const minLength = Math.min(cleanTitle.length, cleanMovieName.length);
+            let matchCount = 0;
+            for (let i = 0; i < minLength; i++) {
+                if (cleanTitle[i] === cleanMovieName[i]) matchCount++;
+            }
+            score = Math.floor((matchCount / minLength) * 50); // 最高50分
+        }
+
+        return { link, score };
+    });
+
+    // 按分数排序并返回最佳匹配
+    matches.sort((a, b) => b.score - a.score);
+    return matches[0]?.score > 30 ? matches[0].link : null; // 只返回分数超过30的匹配
+}
+
+// 生成格式化内容
+function generateFormattedContent(movieName, originalContent, link) {
+    return `提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
+提示：电影《${movieName}》全集在线观看地址百度云/夸克网盘资源链接放在文章中间👇👇，往下翻就行
+
+${originalContent}
+
+《${movieName}》（资源尽快保存，随时失效）
+
+链接：${link}
+
+提示：复制上方网盘链接到浏览器搜索打开即可保存观看
+资源完全免费；不会收取您任何费用，资源搜集于互联网公开分享资源，如有侵权，联系立删`;
+}
+
+// 加载历史记录
+function loadHistory(searchTerm = '') {
+    console.log('加载历史记录');
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    
+    // 应用搜索过滤
+    const filteredHistory = history.filter(item => {
+        const searchLower = searchTerm.toLowerCase();
+        const title = item.movieName || '';
+        return title.toLowerCase().includes(searchLower);
+    });
+
+    const totalPages = Math.ceil(filteredHistory.length / PAGE_SIZE) || 1;
+    currentHistoryPage = Math.min(currentHistoryPage, totalPages);
+
+    console.log('历史记录总页数：', totalPages);
+    historyPageInfo.textContent = `${currentHistoryPage}/${totalPages}`;
+    historyPrevPage.disabled = currentHistoryPage === 1;
+    historyNextPage.disabled = currentHistoryPage === totalPages;
+
+    const startIndex = (currentHistoryPage - 1) * PAGE_SIZE;
+    const pageData = filteredHistory.slice(startIndex, startIndex + PAGE_SIZE);
+
+    historyList.innerHTML = '';
+    pageData.forEach((item) => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+            <div class="item-content">
+                <span class="title">${item.movieName || ''}</span>
+                <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
+            </div>
+            <button class="delete-btn" type="button">删除</button>
+        `;
+        
+        // 点击内容区域显示格式化内容
+        div.querySelector('.item-content').onclick = () => {
+            // 使用保存的链接重新生成格式化内容
+            const formattedContent = generateFormattedContent(
+                item.movieName,
+                item.original,
+                item.link || ''  // 使用保存的链接
+            );
+            document.getElementById('outputText').textContent = formattedContent;
+        };
+        
+        // 删除按钮事件
+        div.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('确定要删除这条记录吗？')) {
+                const allHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+                const realIndex = allHistory.findIndex(h => 
+                    h.movieName === item.movieName && 
+                    h.timestamp === item.timestamp
+                );
+                if (realIndex !== -1) {
+                    allHistory.splice(realIndex, 1);
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
+                    loadHistory(searchTerm);
+                }
+            }
+        };
+        
+        historyList.appendChild(div);
+    });
+}
+
+// 保存到历史记录
+function saveToHistory(originalContent, formattedContent, movieName, matchedLink = '') {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    history.unshift({
+        movieName,
+        original: originalContent,
+        formatted: formattedContent,
+        link: matchedLink,  // 保存匹配到的链接
+        timestamp: Date.now()
+    });
+    
+    // 限制历史记录数量
+    if (history.length > 100) {
+        history.pop();
+    }
+    
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    loadHistory();
 }
 
 // 加载SheetJS库
@@ -641,7 +762,7 @@ async function loadSheetJS() {
 
 // 确保在页面加载完成后执行
 document.addEventListener('DOMContentLoaded', () => {
-    // 获��导出历史记录按钮
+    // 获导出历史记录按钮
     const exportHistory = document.getElementById('exportHistory');
 
     // 加载SheetJS库
@@ -666,7 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
             if (history.length === 0) {
-                alert('没有可导出的历史记录');
+                alert('没有可导出的历史���录');
                 return;
             }
 
