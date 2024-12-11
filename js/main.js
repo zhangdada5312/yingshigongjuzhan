@@ -410,29 +410,29 @@ function initializeEventListeners() {
                         throw new Error('无法读取工作表内容');
                     }
                     
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                    if (!jsonData || jsonData.length === 0) {
-                        throw new Error('Excel文件中没有数据');
+                    // 直接读取A列和B列的数据
+                    const range = XLSX.utils.decode_range(worksheet['!ref']);
+                    const newLinks = [];
+                    
+                    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+                        const titleCell = worksheet[XLSX.utils.encode_cell({r: row, c: 0})]; // A列
+                        const linkCell = worksheet[XLSX.utils.encode_cell({r: row, c: 1})];  // B列
+                        
+                        if (titleCell && linkCell) {
+                            newLinks.push({
+                                title: titleCell.v.toString().trim(),
+                                link: linkCell.v.toString().trim(),
+                                timestamp: new Date().getTime()
+                            });
+                        }
                     }
-
-                    // 验证数据格式
-                    if (!jsonData[0].hasOwnProperty('电影��称') || !jsonData[0].hasOwnProperty('链接地址')) {
-                        throw new Error('Excel文件格式正确，请确保含"电影名称"和"链接地址"列');
-                    }
-
-                    // 获取现有链接
-                    const existingLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
-
-                    // 处理导入的数据
-                    const newLinks = jsonData.map(row => ({
-                        title: row['电影名称'],
-                        link: row['链接地址'],
-                        timestamp: new Date().getTime()
-                    })).filter(link => link.title && link.link); // 过滤掉空数据
 
                     if (newLinks.length === 0) {
                         throw new Error('没有找到有效的链接数据');
                     }
+
+                    // 获取现有链接
+                    const existingLinks = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
 
                     // 合并链接并去重
                     const allLinks = [...existingLinks, ...newLinks];
@@ -476,7 +476,7 @@ function initializeEventListeners() {
 
             // 使用简单的确认对话框
             if (confirm('确定要删除所有链接吗？此操作不可恢复')) {
-                console.log('确认���除所有链接');
+                console.log('确认删除所有链接');
                 localStorage.setItem(LINKS_KEY, '[]');
                 loadSavedLinks();
                 alert('已删除所有链接');
@@ -787,7 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
             if (history.length === 0) {
-                alert('没有可导出的历史���录');
+                alert('没有可导出的历史记录');
                 return;
             }
 
